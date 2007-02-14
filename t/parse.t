@@ -4,7 +4,7 @@ use warnings;
 use HTML::Copy;
 use utf8;
 use Data::Dumper;
-
+use File::Spec;
 
 use Test::More tests => 8;
 
@@ -48,7 +48,7 @@ EOT
 my $sub_dir_name = "sub$$";
 mkdir($sub_dir_name);
 my $src_file_name = "file$$.html";
-my $destination = "$sub_dir_name/$src_file_name";
+my $destination = File::Spec->catfile($sub_dir_name, $src_file_name);
 
 open(my $src_fh, ">:utf8", $src_file_name);
 print $src_fh $source_html_nocharset;
