@@ -45,6 +45,8 @@ Make an instance of this module.
 
 	$p = HTML::Copy->new($source_path);
 
+=back
+
 =cut
 
 sub new {
@@ -57,15 +59,24 @@ sub new {
 	else {
 		$self->{'SourceFile'} = shift @_;
 	}
+	
+	if ($self->{'SourceFile'}) {
+		(-e $self->{'SourceFile'}) or croak "$self->{'SourceFile'} is not found.\n";
+	}
+	
 	return $self;
 }
 
-=back
+
 =head1 INSTANCE METHODS
+
 =over 2
 
 =item copy_to
+
 Parse contents of $source_path given in new method, change links and write into $destination_path.
+
+=back
 
 =cut
 
@@ -102,6 +113,9 @@ sub parse_to {
 }
 
 =head1 Class Methods
+
+=over 2
+
 =item parse_file
 
 Parse contents of $source_path and change links to copy into $destination_path. But don't make $destination_path. Just return modified HTML. The encoding of strings is converted into utf8.
@@ -122,7 +136,8 @@ Parse contents of $source_path, change links and write into $destination_path.
 
 	HTML::Copy->htmlcopy($source_path, $destination_path);
 
--back
+=back
+
 =cut
 sub htmlcopy($$$) {
 	my ($class, $source_path, $destination_path) = @_;
@@ -138,7 +153,7 @@ sub htmlcopy($$$) {
 
 Perl IO layer to read $source_path and to write $destination_path. It was determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
 
-	$0->io_layer;
+	$p->io_layer;
 
 =cut
 sub io_layer($) {
@@ -151,13 +166,29 @@ sub io_layer($) {
 }
 
 =item set_encode_suspects
+
 Add suspects of text encoding to guess the text encoding of the source HTML. If the source HTML have charset tag, it is not requred to add suspects.
+
+	$p->set_encode_suspects(qw/shiftjis euc-jp/);
 
 =cut
 sub set_encode_suspects {
 	my ($self, @suspects) = @_;
 	$self->{'EncodeSuspects'} = \@suspects;
 	return 1;
+}
+
+=item source_html
+
+Obtain source HTML's contents
+
+	$p->source_html;
+
+=cut
+sub source_html {
+	my ($self) = @_;
+	$self->io_layer;
+	return $self->{'SourceHTML'};
 }
 
 =back
