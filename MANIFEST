@@ -5,4 +5,4 @@ Makefile.PL
 lib/HTML/Copy.pm
 bin/htmlcopy
 t/00-load.t
-t/parse_file.t
+t/parse.t
