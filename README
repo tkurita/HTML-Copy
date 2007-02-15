@@ -1,9 +1,11 @@
 HTML-Copy
 ======================
 
-HTML::Copy copy a HTML file without breaking links in the files. This package provide a perl module "HTML::Copy" and a command line tool "htmlcopy".
+HTML::Copy copy a HTML file without breaking links in the file. HTML::Copy will be useful to mainten web site and to handle HTML templates. 
 
-HTML::Copy will be useful to mainten web site and to handle HTML templates.
+This package provide a perl module "HTML::Copy" and a command line tool "htmlcopy".
+
+
 
 == INSTALLATION
 

@@ -30,7 +30,7 @@ our $VERSION = '1.1';
 	my ($source_path, $target_path) = @ARGV;
 
 	my $p = HTML::Copy->new($source_path);
-	$p->set_encode_suspects(qw/euc-jp shiftjis 7bit-jis/);
+	#$p->set_encode_suspects(qw/euc-jp shiftjis 7bit-jis/);
 	$p->copy_to($target_path);
 }
 

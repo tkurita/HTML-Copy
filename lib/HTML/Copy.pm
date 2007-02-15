@@ -2,14 +2,15 @@ package HTML::Copy;
 
 use strict;
 use warnings;
-
 use File::Spec;
 use File::Basename;
 use Cwd;
 use IO::File;
 use utf8;
+use Encode;
 use Encode::Guess;
-use Data::Dumper;
+use Carp;
+#use Data::Dumper;
 
 use HTML::Parser 3.40;
 use HTML::HeadParser;
@@ -18,7 +19,7 @@ use base qw(HTML::Parser);
 
 #use Data::Dumper;
 
-our $VERSION = '1.1';
+our $VERSION = '1.10';
 
 =head1 NAME
 
@@ -105,11 +106,13 @@ sub parse_to {
 	$self->set_destination($destination_path);
 	$self->io_layer();
 	
-	my $outHandle = dummyIO->new();
-	$self->{'outputHTML'} = $outHandle;
+	my $output = '';
+	my $fh = IO::File->new(\$output, ">:utf8");
+	$self->{'outputHTML'} = $fh;
 	$self->SUPER::parse($self->{'SourceHTML'});
 	$self->eof;
-	return join('',@{$outHandle->{'output'}});
+	$fh->close;
+	return decode_utf8($output);
 }
 
 =head1 Class Methods
@@ -338,24 +341,6 @@ sub change_link{
 sub output{
 	my ($self,$out_text) = @_;
 	$self->{'outputHTML'}->print($out_text);
-}
-
-##== obsolute
-
-package dummyIO;
-
-use strict;
-use warnings;
-
-sub new {
-  my $class = shift @_;
-  my $self = bless {'output'=>[]}, $class;
-  return $self;
-}
-
-sub print {
-  my ($self,$outText) = @_;
-  push(@{$self -> {'output'}}, $outText);
 }
 
 1;

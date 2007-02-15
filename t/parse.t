@@ -5,6 +5,7 @@ use HTML::Copy;
 use utf8;
 use Data::Dumper;
 use File::Spec;
+#use Data::Dumper;
 
 use Test::More tests => 8;
 
