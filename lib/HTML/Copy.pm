@@ -1,5 +1,5 @@
 package HTML::Copy;
-
+use 5.008;
 use strict;
 use warnings;
 use File::Spec;
@@ -16,40 +16,74 @@ use HTML::Parser 3.40;
 use HTML::HeadParser;
 use base qw(HTML::Parser);
 
-
-#use Data::Dumper;
-
-our $VERSION = '1.10';
-
 =head1 NAME
 
 HTML::Copy - copy a HTML file without breaking links.
 
+=head1 VERSION
+
+Version 1.11
+
+=cut
+our $VERSION = '1.11';
+
 =head1 SYMPOSIS
 
- use HTML::Copy;
+  use HTML::Copy;
 
- $p = HTML::Copy->new();
- $p->htmlcopy($source_path, $destination_path);
+  $p = HTML::Copy->new();
+  $p->htmlcopy($source_path, $destination_path);
 
 =head1 DESCRIPTION
 
 This module is to copy a HTML file without beaking links in the file. This module is a sub class of HTML::Parser.
 
-=head1 CONSTRUCTOR METHODS
+=head1 REQUIRED MODULES
 
 =over 2
 
-=item new
-
-Make an instance of this module.
-
-	$p = HTML::Copy->new($source_path);
+=item L<HTML::Parser>
 
 =back
 
-=cut
+=head1 CLASS METHODS
 
+=head2 htmlcopy
+
+    HTML::Copy->htmlcopy($source_path, $destination_path);
+
+Parse contents of $source_path, change links and write into $destination_path.
+
+=cut
+sub htmlcopy($$$) {
+	my ($class, $source_path, $destination_path) = @_;
+	my $p = $class->new($source_path);
+	return $p->copy_to($destination_path);
+}
+
+=head2 parse_file
+
+    $html_text = HTML::Copy->parse_file($source_path, $destination_path);
+
+Parse contents of $source_path and change links to copy into $destination_path. But don't make $destination_path. Just return modified HTML. The encoding of strings is converted into utf8.
+
+=cut
+sub parse_file($$$) {
+	my ($class, $source_path, $destination_path) = @_;
+	my $p = $class->new($source_path);
+	return $p->parse_to($destination_path);
+}
+
+
+=head1 CONSTRUCTOR METHODS
+
+=head2 new
+
+    $p = HTML::Copy->new($source_path);
+
+Make an instance of this module.
+
+=cut
 sub new {
 	my $class = shift @_;
 	my $parent = $class->SUPER::new();
@@ -71,16 +105,13 @@ sub new {
 
 =head1 INSTANCE METHODS
 
-=over 2
+=head2 copy_to
 
-=item copy_to
+    $p->copy_to($destination_path)
 
 Parse contents of $source_path given in new method, change links and write into $destination_path.
 
-=back
-
 =cut
-
 sub copy_to {
 	my ($self, $destination_path) = @_;
 	$self->set_destination($destination_path);
@@ -101,10 +132,17 @@ sub copy_to {
 	return $self->{'DestinationFile'};
 }
 
+=head2 parse_to
+
+    $p->parse_to($destination_path)
+
+Parse contents of $source_path given in new method, change links and return HTML contents to wirte $destination_path. Unlike copy_to, $destination_path will not created.
+
+=cut
 sub parse_to {
 	my ($self, $destination_path) = @_;
 	$self->set_destination($destination_path);
-	$self->io_layer();
+	$self->io_layer;
 	
 	my $output = '';
 	my $fh = IO::File->new(\$output, ">:utf8");
@@ -115,77 +153,59 @@ sub parse_to {
 	return decode_utf8($output);
 }
 
-=head1 Class Methods
-
-=over 2
-
-=item parse_file
-
-Parse contents of $source_path and change links to copy into $destination_path. But don't make $destination_path. Just return modified HTML. The encoding of strings is converted into utf8.
-
-	$html_text = HTML::Copy->parse_file($source_path, $destination_path);
-
-=cut
-
-sub parse_file($$$) {
-	my ($class, $source_path, $destination_path) = @_;
-	my $p = $class->new($source_path);
-	return $p->parse_to($destination_path);
-}
-
-=item htmlcopy
-
-Parse contents of $source_path, change links and write into $destination_path.
-
-	HTML::Copy->htmlcopy($source_path, $destination_path);
-
-=back
-
-=cut
-sub htmlcopy($$$) {
-	my ($class, $source_path, $destination_path) = @_;
-	my $p = $class->new($source_path);
-	return $p->copy_to($destination_path);
-}
-
 =head1 ACCESSOR METHODS
 
-=over 2
+=head2 io_layer
 
-=item io_layer
+    $p->io_layer;
+    $p->io_layer(':utf8');
 
-Perl IO layer to read $source_path and to write $destination_path. It was determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
-
-	$p->io_layer;
+Get and set PerlIO layer to read $source_path and to write $destination_path. Usualy it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
 
 =cut
-sub io_layer($) {
-	my ($self) = @_;
-	unless ($self->{'io_layer'}) {
-		$self->{'io_layer'} = $self->check_io_layer();
+sub io_layer {
+	my $self = shift @_;
+	if (@_) {
+		$self->{'io_layer'} = shift @_;
+	}
+	else {
+		unless ($self->{'io_layer'}) {
+			$self->{'io_layer'} = $self->check_io_layer();
+		}
 	}
 	
 	return $self->{'io_layer'};
 }
 
-=item set_encode_suspects
+=head2 encode_suspects
+
+    @suspects = $p->encode_sustects;
+    $p->encode_suspects(qw/shiftjis euc-jp/);
 
 Add suspects of text encoding to guess the text encoding of the source HTML. If the source HTML have charset tag, it is not requred to add suspects.
 
-	$p->set_encode_suspects(qw/shiftjis euc-jp/);
-
 =cut
-sub set_encode_suspects {
-	my ($self, @suspects) = @_;
-	$self->{'EncodeSuspects'} = \@suspects;
-	return 1;
+sub encode_suspects {
+	my $self = shift @_;
+	
+	if (@_) {
+		my @suspects = @_;
+		$self->{'EncodeSuspects'} = \@suspects;
+	}
+	
+	if (my $suspects_ref = $self->{'EncodeSuspects'}) {
+		return @$suspects_ref;
+	}
+	else {
+		return ();
+	}
 }
 
-=item source_html
+=head2 source_html
+
+    $p->source_html;
 
 Obtain source HTML's contents
-
-	$p->source_html;
 
 =cut
 sub source_html {
@@ -193,8 +213,6 @@ sub source_html {
 	$self->io_layer;
 	return $self->{'SourceHTML'};
 }
-
-=back
 
 =head1 AUTHOR
 
@@ -258,7 +276,7 @@ sub set_destination {
 	return $destination_path;
 }
 
-sub check_encoding() {
+sub check_encoding {
 	my ($self) = @_;
 	my $data;
 	open my $in, "<", $self->{'SourceFile'};
@@ -278,13 +296,13 @@ sub check_encoding() {
 
 	unless ($encoding) {
 		my $decoder;
-		if (my $suspects = $self->{'EncodeSuspects'}) {
-			$decoder = Encode::Guess->guess($data, @$suspects);
+		if (my @suspects = $self->encode_suspects) {
+			$decoder = Encode::Guess->guess($data, @suspects);
 		}
 		else {
 			$decoder = Encode::Guess->guess($data);
 		}
-		ref($decoder) or die("Cant guess");
+		ref($decoder) or die("Can't guess encoding of source HTML");
 		$encoding = $decoder->name;
 	}
 	
@@ -293,9 +311,9 @@ sub check_encoding() {
 	return $encoding;
 }
 
-sub check_io_layer() {
+sub check_io_layer {
     my ($self) = @_;
-	my $encoding = $self->check_encoding();
+	my $encoding = $self->check_encoding;
 	return '' unless ($encoding);
 	
 	my $io_layer = '';
@@ -323,7 +341,7 @@ sub build_attributes {
   return join(' ', @attrs);
 }
 
-sub change_link{
+sub change_link {
 	my ($self, $a_path) = @_;
 	my $abs_source_path = File::Spec->rel2abs($a_path, dirname($self->{'SourceFile'}));
 	$abs_source_path = Cwd::realpath($abs_source_path);
@@ -338,7 +356,7 @@ sub change_link{
 	return $rel_path;
 }
 
-sub output{
+sub output {
 	my ($self,$out_text) = @_;
 	$self->{'outputHTML'}->print($out_text);
 }
