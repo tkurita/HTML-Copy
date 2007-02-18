@@ -1,4 +1,8 @@
 Revision history for Perl extension HTML::Copy.
 
+1.11 2007-02-19
+	* blush up POD
+	* blush up code
+	* add use 5.008
 1.1
 	* First version to update CPAN
