@@ -3,6 +3,7 @@ Revision history for Perl extension HTML::Copy.
 1.12 2007-02-22
 	* fix error in POD
 	* use Class::Accessor
+	* fix invalid warnning when a file does not exist
 	
 1.11 2007-02-19
 	* blush up POD
