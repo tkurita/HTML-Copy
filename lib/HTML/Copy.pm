@@ -15,7 +15,10 @@ use Carp;
 
 use HTML::Parser 3.40;
 use HTML::HeadParser;
-use base qw(HTML::Parser);
+use base qw(HTML::Parser Class::Accessor);
+
+HTML::Copy->mk_accessors(qw(source_path
+                            destination_path));
 
 =head1 NAME
 
@@ -23,17 +26,21 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.11
+Version 1.12
 
 =cut
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 =head1 SYMPOSIS
 
   use HTML::Copy;
-
-  $p = HTML::Copy->new();
-  $p->htmlcopy($source_path, $destination_path);
+  
+  HTML::Copy->htmlcopy($source_path, $destination_path);
+  
+  # or
+  
+  $p = HTML::Copy->new($source_path);
+  $p->copy_to($destination_path);
 
 =head1 DESCRIPTION
 
@@ -87,17 +94,16 @@ Make an instance of this module.
 =cut
 sub new {
 	my $class = shift @_;
-	my $parent = $class->SUPER::new();
-	my $self = bless $parent,$class;
+	my $self = $class->SUPER::new();
 	if (@_ > 1) {
 		push @$self, @_;
 	}
 	else {
-		$self->{'SourceFile'} = shift @_;
+		$self->source_path(shift @_);
 	}
 	
-	if ($self->{'SourceFile'}) {
-		(-e $self->{'SourceFile'}) or croak "$self->{'SourceFile'} is not found.\n";
+	if ($self->source_path) {
+		(-e $self->source_path) or croak $self->source_path." is not found.\n";
 	}
 	
 	return $self;
@@ -130,7 +136,7 @@ sub copy_to {
 		die "can't open $destination_path.";
 	}
 	
-	return $self->{'DestinationFile'};
+	return $self->destination_path;
 }
 
 =head2 parse_to
@@ -270,17 +276,17 @@ sub set_destination {
 	my ($self, $destination_path) = @_;
 	$destination_path = Cwd::realpath($destination_path);
 	if (-d $destination_path) {
-		my $file_name = basename($self->{'SourceFile'});
+		my $file_name = basename($self->source_path);
 		$destination_path = File::Spec->catfile($destination_path, $file_name);
 	}
-	$self->{'DestinationFile'} = $destination_path;
+	$self->destination_path($destination_path);
 	return $destination_path;
 }
 
 sub check_encoding {
 	my ($self) = @_;
 	my $data;
-	open my $in, "<", $self->{'SourceFile'};
+	open my $in, "<", $self->source_path;
 	{local $/; $data = <$in>;}
 	close $in;
 	
@@ -344,11 +350,13 @@ sub build_attributes {
 
 sub change_link {
 	my ($self, $a_path) = @_;
-	my $abs_source_path = File::Spec->rel2abs($a_path, dirname($self->{'SourceFile'}));
+	my $abs_source_path = File::Spec->rel2abs($a_path, 
+                            dirname($self->source_path));
 	$abs_source_path = Cwd::realpath($abs_source_path);
 	my $rel_path;
 	if (-e $abs_source_path) {
-		$rel_path = File::Spec->abs2rel($abs_source_path, dirname($self->{'DestinationFile'}));
+		$rel_path = File::Spec->abs2rel($abs_source_path, 
+                            dirname($self->destination_path));
 	}
 	else {
 		warn("$abs_source_path is not found.\nThe link to this path is not changed.\n");
@@ -358,7 +366,7 @@ sub change_link {
 }
 
 sub output {
-	my ($self,$out_text) = @_;
+	my ($self, $out_text) = @_;
 	$self->{'outputHTML'}->print($out_text);
 }
 
