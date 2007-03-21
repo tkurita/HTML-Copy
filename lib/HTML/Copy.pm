@@ -26,10 +26,10 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.12
+Version 1.13
 
 =cut
-our $VERSION = '1.12';
+our $VERSION = '1.13';
 
 =head1 SYMPOSIS
 
@@ -335,7 +335,7 @@ sub check_io_layer {
 
 sub is_rel_link($) {
 	my $an_url = shift @_;
-	return ($an_url =~ /^(?!http:|mailto:|ftp:|#)(.+)/);
+	return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
 }
 
 sub build_attributes {
@@ -350,6 +350,11 @@ sub build_attributes {
 
 sub change_link {
 	my ($self, $a_path) = @_;
+    my $anchor;
+    if ($a_path =~/(.+)#(.*)/){
+        $a_path = $1;
+        $anchor = $2;
+    }
 	my $abs_source_path = File::Spec->rel2abs($a_path, 
                             dirname($self->source_path));
 	$abs_source_path = Cwd::realpath($abs_source_path);
@@ -362,6 +367,11 @@ sub change_link {
 		warn("$abs_source_path is not found.\nThe link to this path is not changed.\n");
 		$rel_path = $a_path;
 	}
+    
+    if ($anchor) {
+        $a_path = $a_path.$anchor;
+    }
+    
 	return $rel_path;
 }
 
