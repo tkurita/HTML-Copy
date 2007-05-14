@@ -339,13 +339,17 @@ sub is_rel_link($) {
 }
 
 sub build_attributes {
-  my ($self, $attr_dict, $attr_names) = @_;
-  my @attrs = ();
-  foreach my $attr_name (@{$attr_names}) {
-	my $attr_value = $attr_dict->{$attr_name};
-	push @attrs, "$attr_name=\"$attr_value\"";
-  }
-  return join(' ', @attrs);
+    my ($self, $attr_dict, $attr_names) = @_;
+    my @attrs = ();
+    foreach my $attr_name (@{$attr_names}) {
+        if ($attr_name eq '/') {
+            push @attrs, '/';
+        } else {
+            my $attr_value = $attr_dict->{$attr_name};
+            push @attrs, "$attr_name=\"$attr_value\"";
+        }
+    }
+    return join(' ', @attrs);
 }
 
 sub change_link {
