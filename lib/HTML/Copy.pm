@@ -258,15 +258,14 @@ sub start {
         }
         
         my $is_changed = 0;
-    	foreach my $an_attr (@{$self->link_attributes}) {
+        foreach my $an_attr (@{$self->link_attributes}) {
     		if (exists($attr_dict->{$an_attr})){
     			my $link_path = $attr_dict->{$an_attr};
-    			unless ($link_path =~ /^\$/) {
-    				if (is_rel_link($link_path)){
-    					$is_changed = 1;
-    					$attr_dict->{$an_attr} = $self->change_link($link_path);
-    				}
-    			}
+    			next if ($link_path =~ /^\$/);
+				if (is_rel_link($link_path)){
+					$is_changed = 1;
+					$attr_dict->{$an_attr} = $self->change_link($link_path);
+				}
     		}
     	}
     
@@ -342,9 +341,14 @@ sub check_io_layer {
 	return $io_layer;
 }
 
+sub is_local_link {
+    my $an_url = pop @_;
+    return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
+}
+
 sub is_rel_link($) {
-	my $an_url = shift @_;
-	return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
+    my $an_url = pop @_;
+    return (is_local_link($an_url)) or ($an_url !~ /^\//);
 }
 
 sub build_attributes {
