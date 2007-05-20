@@ -18,8 +18,10 @@ use HTML::HeadParser;
 use base qw(HTML::Parser Class::Accessor);
 
 HTML::Copy->mk_accessors(qw(source_path
-                            destination_path));
-
+                            destination_path
+                            link_attributes
+                            has_base));
+ 
 =head1 NAME
 
 HTML::Copy - copy a HTML file without breaking links.
@@ -93,19 +95,21 @@ Make an instance of this module.
 
 =cut
 sub new {
-	my $class = shift @_;
-	my $self = $class->SUPER::new();
-	if (@_ > 1) {
-		push @$self, @_;
-	}
-	else {
-		$self->source_path(shift @_);
-	}
-	
-	if ($self->source_path) {
-		(-e $self->source_path) or croak $self->source_path." is not found.\n";
-	}
-	
+    my $class = shift @_;
+    my $self = $class->SUPER::new();
+    if (@_ > 1) {
+        push @$self, @_;
+    } else {
+        $self->source_path(shift @_);
+    }
+    
+    if ($self->source_path) {
+        (-e $self->source_path) or croak $self->source_path." is not found.\n";
+    }
+    
+    $self->link_attributes(['src', 'livesrc', 'href', 'csref']);
+    $self->has_base(0);
+    
 	return $self;
 }
 
@@ -237,36 +241,41 @@ sub text        { $_[0]->output($_[1])          }
 
 sub start {
 	my ($self, $tag, $attr_dict, $attr_names, $tag_text) = @_; 
-	my @link_attrs = ();
 	
-	if (grep {/^$tag/} ('img','frame','script')){
-		@link_attrs = ('src','livesrc'); #livesrc is for GoLive
-	}
-	elsif (grep {/^$tag/} ('link','a')){
-		@link_attrs = ('href');
-	}
-	elsif ($tag eq 'csobj'){ #GoLive
-		@link_attrs = ('csref');
-	}
-
-	my $is_changed = 0;
-	foreach my $an_attr (@link_attrs) {
-		if (exists($attr_dict->{$an_attr})){
-			my $link_path = $attr_dict->{$an_attr};
-			unless ($link_path =~ /^\$/) {
-				if (is_rel_link($link_path)){
-					$is_changed = 1;
-					$attr_dict->{$an_attr} = $self->change_link($link_path);
-				}
-			}
-		}
-	}
-
-	if ($is_changed) {
-		my $attrs_text = $self->build_attributes($attr_dict, $attr_names);
-		$tag_text = "<$tag $attrs_text>";
-	}
-
+#	if (grep {/^$tag/} ('img','frame','script')){
+#		@link_attrs = ('src','livesrc'); #livesrc is for GoLive
+#	}
+#	elsif (grep {/^$tag/} ('link','a')){
+#		@link_attrs = ('href');
+#	}
+#	elsif ($tag eq 'csobj'){ #GoLive
+#		@link_attrs = ('csref');
+#	}
+    
+    unless ($self->has_base) {
+        if ($tag eq 'base') {
+            $self->has_base(1);
+        }
+        
+        my $is_changed = 0;
+    	foreach my $an_attr (@{$self->link_attributes}) {
+    		if (exists($attr_dict->{$an_attr})){
+    			my $link_path = $attr_dict->{$an_attr};
+    			unless ($link_path =~ /^\$/) {
+    				if (is_rel_link($link_path)){
+    					$is_changed = 1;
+    					$attr_dict->{$an_attr} = $self->change_link($link_path);
+    				}
+    			}
+    		}
+    	}
+    
+    	if ($is_changed) {
+    		my $attrs_text = $self->build_attributes($attr_dict, $attr_names);
+    		$tag_text = "<$tag $attrs_text>";
+    	}
+    }
+    
 	$self->output($tag_text);
 }
 

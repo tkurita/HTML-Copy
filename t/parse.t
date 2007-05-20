@@ -7,7 +7,7 @@ use utf8;
 use File::Spec;
 #use Data::Dumper;
 
-use Test::More tests => 10;
+use Test::More tests => 12;
 
 my $linked_html = <<EOT;
 <!DOCTYPE html>
@@ -207,6 +207,44 @@ open($in, "<".$p->io_layer, $destination);
 close $in;
 
 ok($copy_html eq $result_html_shiftjis, "htmlcopy");
+
+unlink($destination);
+
+##== Test with base url
+my $src_html_base = <<EOT;
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<base href="http://homepage.mac.com/tkurita/scriptfactory/">
+</head>
+ああ
+<a href="$linked_file_name"></a>
+<frame src="$linked_file_name">
+<img src="$linked_file_name">
+<script src="$linked_file_name"></script>
+<link href="$linked_file_name">
+</html>
+EOT
+
+##== Test code with base url
+open($src_fh, ">:utf8", $src_file_name);
+print $src_fh $src_html_base;
+close $src_fh;
+
+##=== parse_to
+$p = HTML::Copy->new($src_file_name);
+$copy_html = $p->parse_to($destination);
+ok($copy_html eq $src_html_base, "parse_to HTML with base URL");
+
+##=== copy_to
+$p->copy_to($destination);
+open($in, "<".$p->io_layer, $destination);
+{local $/; $copy_html = <$in>};
+close $in;
+
+ok($copy_html eq $src_html_base, "copy_to HTML with base URL");
+unlink($destination);
 
 unlink($linked_file_name, $src_file_name, $destination);
 rmdir($sub_dir_name);
