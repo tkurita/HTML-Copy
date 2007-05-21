@@ -25,7 +25,7 @@ my $source_html_nocharset = <<EOT;
 <!DOCTYPE html>
 <html>
 ああ
-<a href="$linked_file_name"></a>
+<a href="$linked_file_name#anchor"></a>
 <frame src="$linked_file_name">
 <img src="$linked_file_name">
 <script src="$linked_file_name"></script>
@@ -37,7 +37,7 @@ my $result_html_nocharset = <<EOT;
 <!DOCTYPE html>
 <html>
 ああ
-<a href="../$linked_file_name"></a>
+<a href="../$linked_file_name#anchor"></a>
 <frame src="../$linked_file_name">
 <img src="../$linked_file_name">
 <script src="../$linked_file_name"></script>

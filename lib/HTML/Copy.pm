@@ -11,16 +11,20 @@ use utf8;
 use Encode;
 use Encode::Guess;
 use Carp;
-#use Data::Dumper;
+use Data::Dumper;
 
 use HTML::Parser 3.40;
 use HTML::HeadParser;
+use URI::file;
+
 use base qw(HTML::Parser Class::Accessor);
 
-HTML::Copy->mk_accessors(qw(source_path
+__PACKAGE__->mk_accessors(qw(source_path
                             destination_path
                             link_attributes
-                            has_base));
+                            has_base
+                            source_uri
+                            destination_uri));
  
 =head1 NAME
 
@@ -107,7 +111,8 @@ sub new {
         (-e $self->source_path) or croak $self->source_path." is not found.\n";
     }
     
-    $self->link_attributes(['src', 'livesrc', 'href', 'background', 'csref']);
+    $self->link_attributes(['src', 'href', 'background', 'csref', 'livesrc']);
+    # 'livesrc' and 'csref' are uesed in Adobe GoLive
     $self->has_base(0);
     
     return $self;
@@ -132,7 +137,7 @@ sub copy_to {
     
     if (defined $fh) {
         $self->{'outputHTML'} = $fh;
-        $self->SUPER::parse($self->{'SourceHTML'});
+        $self->SUPER::parse($self->{'source_html'});
         $self->eof;
         $fh->close;
     }
@@ -158,7 +163,7 @@ sub parse_to {
     my $output = '';
     my $fh = IO::File->new(\$output, ">:utf8");
     $self->{'outputHTML'} = $fh;
-    $self->SUPER::parse($self->{'SourceHTML'});
+    $self->SUPER::parse($self->{'source_html'});
     $self->eof;
     $fh->close;
     return decode_utf8($output);
@@ -222,7 +227,7 @@ Obtain source HTML's contents
 sub source_html {
     my ($self) = @_;
     $self->io_layer;
-    return $self->{'SourceHTML'};
+    return $self->{'source_html'};
 }
 
 =head1 AUTHOR
@@ -242,16 +247,6 @@ sub text        { $_[0]->output($_[1])          }
 sub start {
     my ($self, $tag, $attr_dict, $attr_names, $tag_text) = @_; 
     
-#    if (grep {/^$tag/} ('img','frame','script')){
-#        @link_attrs = ('src','livesrc'); #livesrc is for GoLive
-#    }
-#    elsif (grep {/^$tag/} ('link','a')){
-#        @link_attrs = ('href');
-#    }
-#    elsif ($tag eq 'csobj'){ #GoLive
-#        @link_attrs = ('csref');
-#    }
-    
     unless ($self->has_base) {
         if ($tag eq 'base') {
             $self->has_base(1);
@@ -262,10 +257,10 @@ sub start {
             if (exists($attr_dict->{$an_attr})){
                 my $link_path = $attr_dict->{$an_attr};
                 next if ($link_path =~ /^\$/);
-                if (is_rel_link($link_path)){
-                    $is_changed = 1;
-                    $attr_dict->{$an_attr} = $self->change_link($link_path);
-                }
+                my $uri = URI->new($link_path);
+                next if ($uri->scheme);
+                $is_changed = 1;
+                $attr_dict->{$an_attr} = $self->change_link($uri);
             }
         }
     
@@ -282,7 +277,7 @@ sub start {
 
 sub set_destination {
     my ($self, $destination_path) = @_;
-    $destination_path = Cwd::realpath($destination_path);
+    $destination_path = Cwd::abs_path($destination_path);
     if (-d $destination_path) {
         my $file_name = basename($self->source_path);
         $destination_path = File::Spec->catfile($destination_path, $file_name);
@@ -321,7 +316,7 @@ sub check_encoding {
         $encoding = $decoder->name;
     }
     
-    $self->{'SourceHTML'} = Encode::decode($encoding, $data);
+    $self->{'source_html'} = Encode::decode($encoding, $data);
     
     return $encoding;
 }
@@ -366,35 +361,45 @@ sub build_attributes {
 }
 
 sub change_link {
-    my ($self, $a_path) = @_;
-    my $anchor;
-    if ($a_path =~/(.+)#(.*)/){
-        $a_path = $1;
-        $anchor = $2;
-    }
-    my $abs_source_path = File::Spec->rel2abs($a_path, 
-                            dirname($self->source_path));
-    $abs_source_path = Cwd::realpath($abs_source_path);
-    my $rel_path;
-    if (-e $abs_source_path) {
-        $rel_path = File::Spec->abs2rel($abs_source_path, 
-                            dirname($self->destination_path));
-    }
-    else {
-        warn("$abs_source_path is not found.\nThe link to this path is not changed.\n");
-        $rel_path = $a_path;
+    my ($self, $uri) = @_;
+    my $result_uri;
+    (my $abs_uri = $uri->abs( $self->source_uri ))->scheme('file');
+    my $abs_path = $abs_uri->file;
+    if (-e $abs_path) {
+        $result_uri = $abs_uri->rel($self->destination_uri);
+    } else {
+        warn("$abs_path is not found.\nThe link to this path is not changed.\n");
+        $result_uri = $uri;
     }
     
-    if ($anchor) {
-        $a_path = $a_path.$anchor;
-    }
-    
-    return $rel_path;
+    return $result_uri->as_string;
 }
 
 sub output {
     my ($self, $out_text) = @_;
     $self->{'outputHTML'}->print($out_text);
+}
+
+sub source_path {
+    my $self = shift @_;
+    
+    if (@_) {
+        my $path = Cwd::abs_path(shift @_);
+        $self->{'source_path'} = $path;
+        $self->source_uri(URI->new($path));
+    }
+    return $self->{'source_path'};
+}
+
+sub destination_path {
+    my $self = shift @_;
+    
+    if (@_) {
+        my $path = shift @_;
+        $self->{'destination_path'} = $path;
+        $self->destination_uri(URI::file->new($path));
+    }
+    return $self->{'destination_path'};
 }
 
 1;
