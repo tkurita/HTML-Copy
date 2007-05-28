@@ -25,7 +25,9 @@ __PACKAGE__->mk_accessors(qw(source_path
                             has_base
                             source_uri
                             destination_uri));
- 
+
+use Data::Dumper;
+
 =head1 NAME
 
 HTML::Copy - copy a HTML file without breaking links.
@@ -69,6 +71,7 @@ This module is to copy a HTML file without beaking links in the file. This modul
 Parse contents of $source_path, change links and write into $destination_path.
 
 =cut
+
 sub htmlcopy($$$) {
     my ($class, $source_path, $destination_path) = @_;
     my $p = $class->new($source_path);
@@ -82,6 +85,7 @@ sub htmlcopy($$$) {
 Parse contents of $source_path and change links to copy into $destination_path. But don't make $destination_path. Just return modified HTML. The encoding of strings is converted into utf8.
 
 =cut
+
 sub parse_file($$$) {
     my ($class, $source_path, $destination_path) = @_;
     my $p = $class->new($source_path);
@@ -98,17 +102,21 @@ sub parse_file($$$) {
 Make an instance of this module.
 
 =cut
+
 sub new {
     my $class = shift @_;
     my $self = $class->SUPER::new();
     if (@_ > 1) {
-        push @$self, @_;
+        my %args = @_;
+        my @keys = keys %args;
+        @$self{@keys} = @args{@keys};
     } else {
         $self->source_path(shift @_);
     }
     
     if ($self->source_path) {
         (-e $self->source_path) or croak $self->source_path." is not found.\n";
+        $self->source_path($self->source_path);
     }
     
     $self->link_attributes(['src', 'href', 'background', 'csref', 'livesrc']);
@@ -128,6 +136,7 @@ sub new {
 Parse contents of $source_path given in new method, change links and write into $destination_path.
 
 =cut
+
 sub copy_to {
     my ($self, $destination_path) = @_;
     $self->set_destination($destination_path);
@@ -140,8 +149,7 @@ sub copy_to {
         $self->SUPER::parse($self->{'source_html'});
         $self->eof;
         $fh->close;
-    }
-    else {
+    } else {
         die "can't open $destination_path.";
     }
     
@@ -277,11 +285,12 @@ sub start {
 
 sub set_destination {
     my ($self, $destination_path) = @_;
-    $destination_path = Cwd::abs_path($destination_path);
+
     if (-d $destination_path) {
         my $file_name = basename($self->source_path);
         $destination_path = File::Spec->catfile($destination_path, $file_name);
     }
+    
     $self->destination_path($destination_path);
     return $destination_path;
 }
@@ -303,7 +312,7 @@ sub check_encoding {
             $encoding = $1;
         }
     }
-
+    
     unless ($encoding) {
         my $decoder;
         if (my @suspects = $self->encode_suspects) {
@@ -312,7 +321,10 @@ sub check_encoding {
         else {
             $decoder = Encode::Guess->guess($data);
         }
-        ref($decoder) or die("Can't guess encoding of source HTML");
+        
+        ref($decoder) or 
+                    die("Can't guess encoding of ".$self->source_path);
+                    
         $encoding = $decoder->name;
     }
     
@@ -336,16 +348,6 @@ sub check_io_layer {
     return $io_layer;
 }
 
-sub is_local_link {
-    my $an_url = pop @_;
-    return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
-}
-
-sub is_rel_link {
-    my $an_url = pop @_;
-    return (is_local_link($an_url)) or ($an_url !~ /^\//);
-}
-
 sub build_attributes {
     my ($self, $attr_dict, $attr_names) = @_;
     my @attrs = ();
@@ -363,7 +365,7 @@ sub build_attributes {
 sub change_link {
     my ($self, $uri) = @_;
     my $result_uri;
-    (my $abs_uri = $uri->abs( $self->source_uri ))->scheme('file');
+    my $abs_uri = $uri->abs( $self->source_uri );
     my $abs_path = $abs_uri->file;
     if (-e $abs_path) {
         $result_uri = $abs_uri->rel($self->destination_uri);
@@ -386,7 +388,7 @@ sub source_path {
     if (@_) {
         my $path = Cwd::abs_path(shift @_);
         $self->{'source_path'} = $path;
-        $self->source_uri(URI->new($path));
+        $self->source_uri(URI::file->new($path));
     }
     return $self->{'source_path'};
 }
@@ -400,6 +402,17 @@ sub destination_path {
         $self->destination_uri(URI::file->new($path));
     }
     return $self->{'destination_path'};
+}
+
+##== obsolute
+sub is_local_link {
+    my $an_url = pop @_;
+    return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
+}
+
+sub is_rel_link {
+    my $an_url = pop @_;
+    return (is_local_link($an_url)) or ($an_url !~ /^\//);
 }
 
 1;
