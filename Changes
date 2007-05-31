@@ -1,5 +1,11 @@
 Revision history for Perl extension HTML::Copy.
 
+1.2 2007-05-31
+	* support XHTML
+	* process with taking account of <base> tag
+	* use URI module instead of File::Spec to convert link path.
+		* HTML::Copy may wark non unix platform.
+	
 1.13 2007-03-22
 	* fix a problem that processing a link including an anchor is not correct.
 

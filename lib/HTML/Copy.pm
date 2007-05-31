@@ -11,7 +11,7 @@ use utf8;
 use Encode;
 use Encode::Guess;
 use Carp;
-use Data::Dumper;
+#use Data::Dumper;
 
 use HTML::Parser 3.40;
 use HTML::HeadParser;
@@ -26,7 +26,7 @@ __PACKAGE__->mk_accessors(qw(source_path
                             source_uri
                             destination_uri));
 
-use Data::Dumper;
+#use Data::Dumper;
 
 =head1 NAME
 
@@ -34,10 +34,11 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.13
+Version 1.2
 
 =cut
-our $VERSION = '1.13';
+
+our $VERSION = '1.2';
 
 =head1 SYMPOSIS
 
@@ -163,6 +164,7 @@ sub copy_to {
 Parse contents of $source_path given in new method, change links and return HTML contents to wirte $destination_path. Unlike copy_to, $destination_path will not created.
 
 =cut
+
 sub parse_to {
     my ($self, $destination_path) = @_;
     $self->set_destination($destination_path);
@@ -209,6 +211,7 @@ sub io_layer {
 Add suspects of text encoding to guess the text encoding of the source HTML. If the source HTML have charset tag, it is not requred to add suspects.
 
 =cut
+
 sub encode_suspects {
     my $self = shift @_;
     
@@ -232,6 +235,7 @@ sub encode_suspects {
 Obtain source HTML's contents
 
 =cut
+
 sub source_html {
     my ($self) = @_;
     $self->io_layer;
@@ -290,9 +294,8 @@ sub set_destination {
         my $file_name = basename($self->source_path);
         $destination_path = File::Spec->catfile($destination_path, $file_name);
     }
-    
-    $self->destination_path($destination_path);
-    return $destination_path;
+
+    return $self->destination_path($destination_path);
 }
 
 sub check_encoding {
@@ -397,22 +400,11 @@ sub destination_path {
     my $self = shift @_;
     
     if (@_) {
-        my $path = shift @_;
+        my $path = Cwd::abs_path(shift @_);
         $self->{'destination_path'} = $path;
         $self->destination_uri(URI::file->new($path));
     }
     return $self->{'destination_path'};
-}
-
-##== obsolute
-sub is_local_link {
-    my $an_url = pop @_;
-    return ($an_url !~ /^(http:|https:|ftp:|mailto:|help:|#)/);
-}
-
-sub is_rel_link {
-    my $an_url = pop @_;
-    return (is_local_link($an_url)) or ($an_url !~ /^\//);
 }
 
 1;
