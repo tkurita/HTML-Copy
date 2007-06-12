@@ -140,7 +140,7 @@ Parse contents of $source_path given in new method, change links and write into 
 
 sub copy_to {
     my ($self, $destination_path) = @_;
-    $self->set_destination($destination_path);
+    $destination_path = $self->set_destination($destination_path);
     my $io_layer = $self->io_layer();
     
     my $fh = IO::File->new($destination_path, ">$io_layer");
@@ -167,7 +167,7 @@ Parse contents of $source_path given in new method, change links and return HTML
 
 sub parse_to {
     my ($self, $destination_path) = @_;
-    $self->set_destination($destination_path);
+    $destination_path = $self->set_destination($destination_path);
     $self->io_layer;
     
     my $output = '';
@@ -189,6 +189,7 @@ sub parse_to {
 Get and set PerlIO layer to read $source_path and to write $destination_path. Usualy it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
 
 =cut
+
 sub io_layer {
     my $self = shift @_;
     if (@_) {
