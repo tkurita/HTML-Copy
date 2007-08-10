@@ -12,6 +12,7 @@ WriteMakefile(
     'PREREQ_PM'     => {
         'Test::More'   => 0,
         'HTML::Parser' => 3.40,
+        'HTTP::Headers' => 0,
         'Class::Accessor' => 0,
         'URI' => 0
     },
