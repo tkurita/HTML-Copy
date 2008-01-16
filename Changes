@@ -1,5 +1,8 @@
 Revision history for Perl extension HTML::Copy.
 
+1.23 2008-01-16
+    * Add error handling routine when a souce file can't be opened.
+
 1.22 2007-08-10
     * add HTTP::Headers to Makefile.PL as a prerequired module(PREREQ_PM).
 
