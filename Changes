@@ -1,5 +1,8 @@
 Revision history for Perl extension HTML::Copy.
 
+1.24 2008-01-24
+    * The test may success in MS Windows platform.
+
 1.23 2008-01-16
     * Add error handling routine when a souce file can't be opened.
 

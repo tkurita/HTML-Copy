@@ -35,11 +35,11 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.23
+Version 1.24
 
 =cut
 
-our $VERSION = '1.23';
+our $VERSION = '1.24';
 
 =head1 SYMPOSIS
 
