@@ -6,8 +6,9 @@ use File::Spec;
 use HTML::Copy;
 use Getopt::Long;
 use Pod::Usage;
+use Cwd;
 
-our $VERSION = '1.24';
+our $VERSION = '1.3';
 
 {
 	my $man = 0;
@@ -22,16 +23,26 @@ our $VERSION = '1.24';
 				-exitstatus => 1, -verbose => 1)
   }
 
-	if (@ARGV < 2) {
+	if (@ARGV < 1) {
 		pod2usage(-message => 'Required arguments is not given.', 
 				-exitstatus => 1, -verbose => 1)
 	}
 
 	my ($source_path, $target_path) = @ARGV;
-
-	my $p = HTML::Copy->new($source_path);
+    
+    my $in;
+    if ($source_path eq '-' ) {
+        open $in , " -";
+    } else {
+        $in = $source_path;
+    }
+    
+	my $p = HTML::Copy->new($in);
 	#$p->set_encode_suspects(qw/euc-jp shiftjis 7bit-jis/);
-	$p->copy_to($target_path);
+    unless ($target_path) {
+        open $target_path, ">-";
+    }
+    $p->copy_to($target_path);
 }
 
 1;
@@ -44,8 +55,8 @@ htmlcopy -- Copy a HTML file without breaking links.
 
 =head1 SYNOPSIS
 
- htmlcopy [OPTION] SOURCE DESTINATION
- htmlcopy [OPTION] SOURCE DIRECTORY
+ htmlcopy [OPTION] {SOURCE | -} DESTINATION
+ htmlcopy [OPTION] {SOURCE | -} DIRECTORY
 
 =head1 DESCRIPTION
 

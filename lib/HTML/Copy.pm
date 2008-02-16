@@ -7,7 +7,7 @@ use File::Spec;
 use File::Basename;
 use File::Path;
 use Cwd;
-use IO::File;
+#use IO::File;
 use utf8;
 use Encode;
 use Encode::Guess;
@@ -29,17 +29,20 @@ __PACKAGE__->mk_accessors(qw(source_path
 
 #use Data::Dumper;
 
+our @default_link_attributes = ('src', 'href', 'background', 'csref', 'livesrc');
+# 'livesrc' and 'csref' are uesed in Adobe GoLive
+
 =head1 NAME
 
 HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.24
+Version 1.3
 
 =cut
 
-our $VERSION = '1.24';
+our $VERSION = '1.3';
 
 =head1 SYMPOSIS
 
@@ -113,16 +116,25 @@ sub new {
         my @keys = keys %args;
         @$self{@keys} = @args{@keys};
     } else {
-        $self->source_path(shift @_);
+        my $file = shift @_;
+        if (!ref($file) && (ref(\$file) ne "GLOB")) {
+            $self->source_path($file);
+        } else {
+            $self->source_handle($file);
+        }
     }
     
-    if ($self->source_path) {
-        (-e $self->source_path) or croak $self->source_path." is not found.\n";
-        $self->source_path($self->source_path);
-    }
+#    if ($self->source_path) {
+#        warn basename($self->source_path);
+#        if ('-' ne basename($self->source_path)) {
+#            (-e $self->source_path) 
+#                or die $self->source_path." is not found.\n";
+#                #or croak $self->source_path." is not found.\n";
+#            $self->source_path($self->source_path);
+#        }
+#    }
     
-    $self->link_attributes(['src', 'href', 'background', 'csref', 'livesrc']);
-    # 'livesrc' and 'csref' are uesed in Adobe GoLive
+    $self->link_attributes(\@default_link_attributes);
     $self->has_base(0);
     
     return $self;
@@ -140,20 +152,25 @@ Parse contents of $source_path given in new method, change links and write into 
 =cut
 
 sub copy_to {
-    my ($self, $destination_path) = @_;
-    $destination_path = $self->set_destination($destination_path);
+    my ($self, $destination) = @_;
     my $io_layer = $self->io_layer();
-    
-    my $fh = IO::File->new($destination_path, ">$io_layer");
-    
-    if (defined $fh) {
-        $self->{'outputHTML'} = $fh;
-        $self->SUPER::parse($self->{'source_html'});
-        $self->eof;
-        $fh->close;
+    my $fh;
+    if (!ref($destination) && (ref(\$destination) ne "GLOB")) {
+        $destination = $self->set_destination($destination);
+#        $fh = IO::File->new($destination_path, ">$io_layer")
+#                            or croak "can't open $destination_path.";
+        open $fh, ">$io_layer", $destination
+                             or croak "can't open $destination.";
     } else {
-        die "can't open $destination_path.";
+        $fh = $destination;
+        binmode($fh, $io_layer);
     }
+    
+    $self->{'outputHTML'} = $fh;
+    $self->SUPER::parse($self->{'source_html'});
+    $self->eof;
+    #$fh->close;
+    close $fh;
     
     return $self->destination_path;
 }
@@ -172,11 +189,13 @@ sub parse_to {
     $self->io_layer;
     
     my $output = '';
-    my $fh = IO::File->new(\$output, ">:utf8");
+    #my $fh = IO::File->new(\$output, ">:utf8");
+    open my $fh, ">:utf8", \$output;
     $self->{'outputHTML'} = $fh;
     $self->SUPER::parse($self->{'source_html'});
     $self->eof;
-    $fh->close;
+    #$fh->close;
+    close $fh;
     return decode_utf8($output);
 }
 
@@ -291,10 +310,13 @@ sub start {
 
 sub set_destination {
     my ($self, $destination_path) = @_;
-
+    
     if (-d $destination_path) {
-        my $file_name = basename($self->source_path);
-        $destination_path = File::Spec->catfile($destination_path, $file_name);
+        my $source_path = $self->source_path
+            or croak "Can't resolve a file name of the destination, because the source path is not given.\n";
+        my $file_name = basename($source_path);
+        $destination_path = File::Spec->catfile(
+                            $destination_path, basename($source_path));
     } else {
         mkpath(dirname($destination_path));
     }
@@ -305,11 +327,18 @@ sub set_destination {
 sub check_encoding {
     my ($self) = @_;
     my $data;
-    open my $in, "<", $self->source_path
-                    or die "Can't open $self->source_path.";
+#    my $a_path = $self->source_path;
+#    my $in;
+#    if (basename($a_path) eq '-') {
+#        open $in, " -";
+#    } else {
+#        open $in, "<", "$a_path"
+#                        or die "Can't open $a_path.";
+#    }
+#    {local $/; $data = <$in>;}
+#    close $in;
+    my $in = $self->source_handle;
     {local $/; $data = <$in>;}
-    close $in;
-    
     my $p = HTML::HeadParser->new;
     $p->utf8_mode(1);
     $p->parse($data);
@@ -388,18 +417,73 @@ sub change_link {
 
 sub output {
     my ($self, $out_text) = @_;
-    $self->{'outputHTML'}->print($out_text);
+    #$self->{'outputHTML'}->print($out_text);
+    print {$self->{'outputHTML'}} $out_text;
+}
+
+sub source_handle {
+    my $self = shift @_;
+    
+    if (@_) {
+        $self->{'source_handle'} = shift @_;
+    }
+    elsif (!$self->{'source_handle'}) {
+        my $path = $self->source_path or croak "source_paht is undefined.";
+        open my $in, "<", $path or croak "Can't open $path.";
+        $self->{'source_handle'} = $in;
+    }
+    
+    return $self->{'source_handle'}
+}
+
+sub source_uri {
+    my $self = shift @_;
+    if (@_) {
+        $self->{'source_uri'} = shift @_;
+    } elsif (!$self->{'source_uri'}) {
+        $self->{'source_uri'} = do {
+            if (my $path = $self->source_path) {
+                URI::file->new($path);
+            } else {
+                URI::file->cwd;
+            }
+        }
+    } 
+    
+    return $self->{'source_uri'}
 }
 
 sub source_path {
     my $self = shift @_;
     
     if (@_) {
-        my $path = Cwd::abs_path(shift @_);
+        my $path = Cwd::abs_path(shift @_);        
         $self->{'source_path'} = $path;
         $self->source_uri(URI::file->new($path));
     }
+#    elsif ($self->{'source_path'}) {
+#        $self->{'source_path'} = cwd;
+#    }
+    
     return $self->{'source_path'};
+}
+
+sub destination_uri {
+    my $self = shift @_;
+    
+    if (@_) {
+        $self->{'destination_uri'} = shift @_;
+    } elsif (!$self->{'destination_uri'}) {
+        $self->{'destination_uri'} = do {
+            if (my $path = $self->destination_path) {
+                URI::file->new($path);
+            } else {
+                URI::file->cwd;
+            }
+        }
+    }
+    
+    return $self->{'destination_uri'};
 }
 
 sub destination_path {
@@ -409,7 +493,8 @@ sub destination_path {
         my $path = Cwd::abs_path(shift @_);
         $self->{'destination_path'} = $path;
         $self->destination_uri(URI::file->new($path));
-    }
+    } 
+
     return $self->{'destination_path'};
 }
 
