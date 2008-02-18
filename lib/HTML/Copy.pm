@@ -322,7 +322,7 @@ sub check_encoding {
     my ($self) = @_;
 #    my $data;
     my $in = $self->source_handle;
-    my $data = do {local $/; <$in>;}
+    my $data = do {local $/; <$in>;};
     my $p = HTML::HeadParser->new;
     $p->utf8_mode(1);
     $p->parse($data);
