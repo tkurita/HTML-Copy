@@ -20,12 +20,8 @@ use URI::file;
 
 use base qw(HTML::Parser Class::Accessor);
 
-__PACKAGE__->mk_accessors(qw(source_path
-                            destination_path
-                            link_attributes
-                            has_base
-                            source_uri
-                            destination_uri));
+__PACKAGE__->mk_accessors(qw(link_attributes
+                            has_base));
 
 #use Data::Dumper;
 
@@ -169,9 +165,8 @@ sub copy_to {
     $self->{'outputHTML'} = $fh;
     $self->SUPER::parse($self->{'source_html'});
     $self->eof;
-    #$fh->close;
     close $fh;
-    
+    $self->source_handle(undef);
     return $self->destination_path;
 }
 
@@ -189,13 +184,12 @@ sub parse_to {
     $self->io_layer;
     
     my $output = '';
-    #my $fh = IO::File->new(\$output, ">:utf8");
     open my $fh, ">:utf8", \$output;
     $self->{'outputHTML'} = $fh;
     $self->SUPER::parse($self->{'source_html'});
     $self->eof;
-    #$fh->close;
     close $fh;
+    $self->source_handle(undef);
     return decode_utf8($output);
 }
 
@@ -326,19 +320,9 @@ sub set_destination {
 
 sub check_encoding {
     my ($self) = @_;
-    my $data;
-#    my $a_path = $self->source_path;
-#    my $in;
-#    if (basename($a_path) eq '-') {
-#        open $in, " -";
-#    } else {
-#        open $in, "<", "$a_path"
-#                        or die "Can't open $a_path.";
-#    }
-#    {local $/; $data = <$in>;}
-#    close $in;
+#    my $data;
     my $in = $self->source_handle;
-    {local $/; $data = <$in>;}
+    my $data = do {local $/; <$in>;}
     my $p = HTML::HeadParser->new;
     $p->utf8_mode(1);
     $p->parse($data);
@@ -417,7 +401,6 @@ sub change_link {
 
 sub output {
     my ($self, $out_text) = @_;
-    #$self->{'outputHTML'}->print($out_text);
     print {$self->{'outputHTML'}} $out_text;
 }
 
@@ -457,13 +440,10 @@ sub source_path {
     my $self = shift @_;
     
     if (@_) {
-        my $path = Cwd::abs_path(shift @_);        
+        my $path = resolve_rel_path(shift @_);
         $self->{'source_path'} = $path;
         $self->source_uri(URI::file->new($path));
     }
-#    elsif ($self->{'source_path'}) {
-#        $self->{'source_path'} = cwd;
-#    }
     
     return $self->{'source_path'};
 }
@@ -490,12 +470,21 @@ sub destination_path {
     my $self = shift @_;
     
     if (@_) {
-        my $path = Cwd::abs_path(shift @_);
+        my $path = resolve_rel_path(shift @_);
         $self->{'destination_path'} = $path;
         $self->destination_uri(URI::file->new($path));
     } 
 
     return $self->{'destination_path'};
+}
+
+sub resolve_rel_path {
+    return Cwd::abs_path(shift @_);
+#    my $path = shift @_;
+#    unless (File::Spec->file_name_is_absolute( $path )) {
+#        $path = File::Spec->rel2abs($path);
+#    }
+#    return $path;
 }
 
 1;
