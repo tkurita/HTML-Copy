@@ -6,8 +6,7 @@ use warnings;
 use File::Spec;
 use File::Basename;
 use File::Path;
-use Cwd;
-#use IO::File;
+#use Cwd;
 use utf8;
 use Encode;
 use Encode::Guess;
@@ -50,7 +49,19 @@ our $VERSION = '1.3';
   
   $p = HTML::Copy->new($source_path);
   $p->copy_to($destination_path);
-
+  
+  # or
+  
+  open my $in, "<", $source_path;
+  $p = HTML::Copy->new($in)
+  $p->source_path($source_path);    # can be omitted, 
+                                    # when $source_path is in cwd.
+  
+  $p->destination_path($destination_path) # can be omitted, 
+                                          # when $source_path is in cwd.
+  open my $out, ">", $source_path;
+  $p->copy_to($out);
+  
 =head1 DESCRIPTION
 
 This module is to copy a HTML file without beaking links in the file. This module is a sub class of HTML::Parser.
@@ -81,16 +92,17 @@ sub htmlcopy($$$) {
 
 =head2 parse_file
 
-    $html_text = HTML::Copy->parse_file($source_path, $destination_path);
+    $html_text = HTML::Copy->parse_file($source_path, 
+                                        $destination_path);
 
 Parse contents of $source_path and change links to copy into $destination_path. But don't make $destination_path. Just return modified HTML. The encoding of strings is converted into utf8.
 
 =cut
 
 sub parse_file($$$) {
-    my ($class, $source_path, $destination_path) = @_;
-    my $p = $class->new($source_path);
-    return $p->parse_to($destination_path);
+    my ($class, $source, $destination) = @_;
+    my $p = $class->new($source);
+    return $p->parse_to($destination);
 }
 
 
@@ -98,9 +110,11 @@ sub parse_file($$$) {
 
 =head2 new
 
-    $p = HTML::Copy->new($source_path);
+    $p = HTML::Copy->new($source);
 
-Make an instance of this module.
+Make an instance of this module with specifing a source of HTML.
+
+The argument $source can be a file path or a file handle. When a file handle is passed, you may need to indicate a file path of the passed file handle by the method L<"source_path">. If calling L<"source_path"> is omitted, it is assumed that the location of the file handle is the current working directory.
 
 =cut
 
@@ -120,16 +134,6 @@ sub new {
         }
     }
     
-#    if ($self->source_path) {
-#        warn basename($self->source_path);
-#        if ('-' ne basename($self->source_path)) {
-#            (-e $self->source_path) 
-#                or die $self->source_path." is not found.\n";
-#                #or croak $self->source_path." is not found.\n";
-#            $self->source_path($self->source_path);
-#        }
-#    }
-    
     $self->link_attributes(\@default_link_attributes);
     $self->has_base(0);
     
@@ -141,9 +145,11 @@ sub new {
 
 =head2 copy_to
 
-    $p->copy_to($destination_path)
+    $p->copy_to($destination)
 
-Parse contents of $source_path given in new method, change links and write into $destination_path.
+Parse contents of $source given in new method, change links and write into $destination.
+
+The argument $destination can be a file path or a file handle. When $destination is a file handle, you may need to indicate the location of the file handle by a method L<"destination_path">. L<"destination_path"> must be called before calling L<"copy_to">. When calling L<"destination_path"> is omitted, it is assumed that the locaiton of the file handle is the current working directory.
 
 =cut
 
@@ -153,8 +159,6 @@ sub copy_to {
     my $fh;
     if (!ref($destination) && (ref(\$destination) ne "GLOB")) {
         $destination = $self->set_destination($destination);
-#        $fh = IO::File->new($destination_path, ">$io_layer")
-#                            or croak "can't open $destination_path.";
         open $fh, ">$io_layer", $destination
                              or croak "can't open $destination.";
     } else {
@@ -162,7 +166,7 @@ sub copy_to {
         binmode($fh, $io_layer);
     }
     
-    $self->{'outputHTML'} = $fh;
+    $self->{'output_handle'} = $fh;
     $self->SUPER::parse($self->{'source_html'});
     $self->eof;
     close $fh;
@@ -174,33 +178,71 @@ sub copy_to {
 
     $p->parse_to($destination_path)
 
-Parse contents of $source_path given in new method, change links and return HTML contents to wirte $destination_path. Unlike copy_to, $destination_path will not created.
+Parse contents of $source_path given in new method, change links and return HTML contents to wirte $destination_path. Unlike copy_to, $destination_path will not created and just return modified HTML. The encoding of strings is converted into utf8.
 
 =cut
 
 sub parse_to {
     my ($self, $destination_path) = @_;
-    $destination_path = $self->set_destination($destination_path);
-    $self->io_layer;
+    $destination_path = $self->destination_path($destination_path);
     
     my $output = '';
-    open my $fh, ">:utf8", \$output;
-    $self->{'outputHTML'} = $fh;
-    $self->SUPER::parse($self->{'source_html'});
-    $self->eof;
-    close $fh;
-    $self->source_handle(undef);
-    return decode_utf8($output);
+    open my $fh, ">", \$output;
+    $self->copy_to($fh);
+    return Encode::decode($self->encoding, $output);
 }
 
 =head1 ACCESSOR METHODS
+
+=head2 source_path
+
+    $p->source_path
+    $p->source_path($path)
+
+Get and set a source location. Usually source location is specified with the L<"new"> method. When a file handle is passed to L<"new"> and the location of the file handle is not the current working directory, you need to use this method.
+
+=cut
+
+sub source_path {
+    my $self = shift @_;
+    
+    if (@_) {
+        my $path = shift @_;
+        $self->{'source_path'} = $path;
+        $self->source_uri(URI::file->new_abs($path));
+    }
+    
+    return $self->{'source_path'};
+}
+
+
+=head2 destination_path
+
+    $p->destination_path
+    $p->destination_path($path)
+
+Get and set a destination location. Usually destination location is specified with the L<"copy_to">. When a file handle is passed to L<"copy_to"> and the location of the file handle is not the current working directory, you need to use this method before L<"copy_to">.
+
+=cut
+
+sub destination_path {
+    my $self = shift @_;
+    
+    if (@_) {
+        my $path = shift @_;
+        $self->{'destination_path'} = $path;
+        $self->destination_uri(URI::file->new_abs($path));
+    } 
+    
+    return $self->{'destination_path'};
+}
 
 =head2 io_layer
 
     $p->io_layer;
     $p->io_layer(':utf8');
 
-Get and set PerlIO layer to read $source_path and to write $destination_path. Usualy it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
+Get and set PerlIO layer to read the source path and to write the destination path. Usualy it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
 
 =cut
 
@@ -302,25 +344,40 @@ sub start {
 
 ##== private functions
 
+sub complete_destination_path {
+    my ($self, $dir) = @_;
+    my $source_path = $self->source_path
+        or croak "Can't resolve a file name of the destination, because a source path is not given.";
+    my $filename = basename($source_path)
+        or croak "Can't resolve a file name of the destination, because given source path is a directory.";
+    return File::Spec->catfile($dir, $filename);
+    
+}
+    
 sub set_destination {
     my ($self, $destination_path) = @_;
     
     if (-d $destination_path) {
-        my $source_path = $self->source_path
-            or croak "Can't resolve a file name of the destination, because the source path is not given.\n";
-        my $file_name = basename($source_path);
-        $destination_path = File::Spec->catfile(
-                            $destination_path, basename($source_path));
+        $destination_path = $self->complete_destination_path($destination_path);
     } else {
-        mkpath(dirname($destination_path));
+        my ($name, $dir) = fileparse($destination_path);
+        unless ($name) {
+            $destination_path = $self->complete_destination_path($destination_path);
+        }
+        
+        mkpath($dir);
     }
 
     return $self->destination_path($destination_path);
 }
 
-sub check_encoding {
+
+sub encoding {
     my ($self) = @_;
-#    my $data;
+    if ($self->{'encoding'}) {
+        return $self->{'encoding'};
+    }
+    
     my $in = $self->source_handle;
     my $data = do {local $/; <$in>;};
     my $p = HTML::HeadParser->new;
@@ -350,13 +407,13 @@ sub check_encoding {
     }
     
     $self->{'source_html'} = Encode::decode($encoding, $data);
-    
+    $self->{'encoding'} = $encoding;
     return $encoding;
 }
 
 sub check_io_layer {
     my ($self) = @_;
-    my $encoding = $self->check_encoding;
+    my $encoding = $self->encoding;
     return '' unless ($encoding);
     
     my $io_layer = '';
@@ -401,7 +458,7 @@ sub change_link {
 
 sub output {
     my ($self, $out_text) = @_;
-    print {$self->{'outputHTML'}} $out_text;
+    print {$self->{'output_handle'}} $out_text;
 }
 
 sub source_handle {
@@ -426,7 +483,7 @@ sub source_uri {
     } elsif (!$self->{'source_uri'}) {
         $self->{'source_uri'} = do {
             if (my $path = $self->source_path) {
-                URI::file->new($path);
+                URI::file->new_abs($path);
             } else {
                 URI::file->cwd;
             }
@@ -434,18 +491,6 @@ sub source_uri {
     } 
     
     return $self->{'source_uri'}
-}
-
-sub source_path {
-    my $self = shift @_;
-    
-    if (@_) {
-        my $path = resolve_rel_path(shift @_);
-        $self->{'source_path'} = $path;
-        $self->source_uri(URI::file->new($path));
-    }
-    
-    return $self->{'source_path'};
 }
 
 sub destination_uri {
@@ -456,7 +501,7 @@ sub destination_uri {
     } elsif (!$self->{'destination_uri'}) {
         $self->{'destination_uri'} = do {
             if (my $path = $self->destination_path) {
-                URI::file->new($path);
+                URI::file->new_abs($path);
             } else {
                 URI::file->cwd;
             }
@@ -466,25 +511,6 @@ sub destination_uri {
     return $self->{'destination_uri'};
 }
 
-sub destination_path {
-    my $self = shift @_;
-    
-    if (@_) {
-        my $path = resolve_rel_path(shift @_);
-        $self->{'destination_path'} = $path;
-        $self->destination_uri(URI::file->new($path));
-    } 
 
-    return $self->{'destination_path'};
-}
-
-sub resolve_rel_path {
-    return Cwd::abs_path(shift @_);
-#    my $path = shift @_;
-#    unless (File::Spec->file_name_is_absolute( $path )) {
-#        $path = File::Spec->rel2abs($path);
-#    }
-#    return $path;
-}
 
 1;
