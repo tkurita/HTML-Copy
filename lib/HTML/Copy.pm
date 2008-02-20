@@ -346,6 +346,11 @@ sub source_html {
     return $self->{'source_html'};
 }
 
+=head1 NOTE
+
+Cleanuped pathes should be given to HTML::Copy and it's instances. For example, a verbose path like '/aa/bb/../cc' may cause converting links wrongly. This is a limitaion of the URI module's rel method. To cleanup pathes, Cwd::realpath is useful.
+
+
 =head1 AUTHOR
 
 Tetsuro KURITA <tkurita@mac.com>

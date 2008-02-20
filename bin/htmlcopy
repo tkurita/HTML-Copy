@@ -56,13 +56,14 @@ htmlcopy -- Copy a HTML file without breaking links.
 =head1 SYNOPSIS
 
  htmlcopy [OPTION] {SOURCE | -} [DESTINATION]
- htmlcopy [OPTION] {SOURCE | -} [DIRECTORY]
 
 =head1 DESCRIPTION
 
-htmlcopy a source HTML file into DESTINATION or DIRECTORY. If the HTML file have links to images, other HTML files, javascripts and cascading style sheets, htmlcopy changing link path in the HTML file to keep the link destination.
+htmlcopy a source HTML file into DESTINATION. If the HTML file have links to images, other HTML files, javascripts and cascading style sheets, htmlcopy changing link path in the HTML file to keep the link destination.
 
-When DESTINATION or DIRECTORY is omitted, the modified HTML is written in the standard output. Also it is assumed that output location is the current working directory.
+When DESTINATION is omitted, the modified HTML is written in the standard output. Also it is assumed that output location is the current working directory.
+
+SOURCE and DESTINATION should be cleanuped pathes. For example, a verbose path like '/aa/bb/../cc' may cause converting links wrongly. This is a limitaion of the URI module's rel method. To cleanup pathes, Cwd::realpath is useful.
 
 =head1 OPTIONS
 
