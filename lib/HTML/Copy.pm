@@ -42,26 +42,26 @@ our $VERSION = '1.3';
 =head1 SYMPOSIS
 
   use HTML::Copy;
-  
+
   HTML::Copy->htmlcopy($source_path, $destination_path);
-  
+
   # or
-  
+
   $p = HTML::Copy->new($source_path);
   $p->copy_to($destination_path);
-  
+
   # or
-  
+
   open my $in, "<", $source_path;
   $p = HTML::Copy->new($in)
   $p->source_path($source_path);    # can be omitted, 
                                     # when $source_path is in cwd.
-  
+
   $p->destination_path($destination_path) # can be omitted, 
                                           # when $source_path is in cwd.
   open my $out, ">", $source_path;
   $p->copy_to($out);
-  
+
 =head1 DESCRIPTION
 
 This module is to copy a HTML file without beaking links in the file. This module is a sub class of HTML::Parser.
@@ -237,6 +237,53 @@ sub destination_path {
     return $self->{'destination_path'};
 }
 
+=head2 enchoding
+
+    $p->encoding;
+
+Get an encoding of a source HTML.
+
+=cut
+
+sub encoding {
+    my ($self) = @_;
+    if ($self->{'encoding'}) {
+        return $self->{'encoding'};
+    }
+    
+    my $in = $self->source_handle;
+    my $data = do {local $/; <$in>;};
+    my $p = HTML::HeadParser->new;
+    $p->utf8_mode(1);
+    $p->parse($data);
+    my $content_type = $p->header('content-type');
+    my $encoding = '';
+    if ($content_type) {
+        if ($content_type =~ /charset\s*=(.+)/) {
+            $encoding = $1;
+        }
+    }
+    
+    unless ($encoding) {
+        my $decoder;
+        if (my @suspects = $self->encode_suspects) {
+            $decoder = Encode::Guess->guess($data, @suspects);
+        }
+        else {
+            $decoder = Encode::Guess->guess($data);
+        }
+        
+        ref($decoder) or 
+                    die("Can't guess encoding of ".$self->source_path);
+                    
+        $encoding = $decoder->name;
+    }
+    
+    $self->{'source_html'} = Encode::decode($encoding, $data);
+    $self->{'encoding'} = $encoding;
+    return $encoding;
+}
+
 =head2 io_layer
 
     $p->io_layer;
@@ -369,46 +416,6 @@ sub set_destination {
     }
 
     return $self->destination_path($destination_path);
-}
-
-
-sub encoding {
-    my ($self) = @_;
-    if ($self->{'encoding'}) {
-        return $self->{'encoding'};
-    }
-    
-    my $in = $self->source_handle;
-    my $data = do {local $/; <$in>;};
-    my $p = HTML::HeadParser->new;
-    $p->utf8_mode(1);
-    $p->parse($data);
-    my $content_type = $p->header('content-type');
-    my $encoding = '';
-    if ($content_type) {
-        if ($content_type =~ /charset\s*=(.+)/) {
-            $encoding = $1;
-        }
-    }
-    
-    unless ($encoding) {
-        my $decoder;
-        if (my @suspects = $self->encode_suspects) {
-            $decoder = Encode::Guess->guess($data, @suspects);
-        }
-        else {
-            $decoder = Encode::Guess->guess($data);
-        }
-        
-        ref($decoder) or 
-                    die("Can't guess encoding of ".$self->source_path);
-                    
-        $encoding = $decoder->name;
-    }
-    
-    $self->{'source_html'} = Encode::decode($encoding, $data);
-    $self->{'encoding'} = $encoding;
-    return $encoding;
 }
 
 sub check_io_layer {
