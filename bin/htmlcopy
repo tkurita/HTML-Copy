@@ -6,7 +6,6 @@ use File::Spec;
 use HTML::Copy;
 use Getopt::Long;
 use Pod::Usage;
-use Cwd;
 
 our $VERSION = '1.3';
 

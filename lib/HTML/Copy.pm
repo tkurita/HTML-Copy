@@ -6,7 +6,6 @@ use warnings;
 use File::Spec;
 use File::Basename;
 use File::Path;
-#use Cwd;
 use utf8;
 use Encode;
 use Encode::Guess;
@@ -480,7 +479,7 @@ sub source_handle {
         $self->{'source_handle'} = shift @_;
     }
     elsif (!$self->{'source_handle'}) {
-        my $path = $self->source_path or croak "source_paht is undefined.";
+        my $path = $self->source_path or croak "source_path is undefined.";
         open my $in, "<", $path or croak "Can't open $path.";
         $self->{'source_handle'} = $in;
     }
