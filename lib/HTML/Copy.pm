@@ -379,8 +379,10 @@ sub start {
                 next if ($link_path =~ /^\$/);
                 my $uri = URI->new($link_path);
                 next if ($uri->scheme);
+                my $newlink = $self->change_link($uri);
+                next unless ($newlink);
+                $attr_dict->{$an_attr} = $newlink;
                 $is_changed = 1;
-                $attr_dict->{$an_attr} = $self->change_link($uri);
             }
         }
     
@@ -461,7 +463,7 @@ sub change_link {
         $result_uri = $abs_uri->rel($self->destination_uri);
     } else {
         warn("$abs_path is not found.\nThe link to this path is not changed.\n");
-        $result_uri = $uri;
+        return "";
     }
     
     return $result_uri->as_string;
