@@ -377,6 +377,7 @@ sub start {
             if (exists($attr_dict->{$an_attr})){
                 my $link_path = $attr_dict->{$an_attr};
                 next if ($link_path =~ /^\$/);
+                next if ($link_path =~ /^\[%.*%\]$/);
                 my $uri = URI->new($link_path);
                 next if ($uri->scheme);
                 my $newlink = $self->change_link($uri);
