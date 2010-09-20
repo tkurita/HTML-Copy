@@ -32,11 +32,11 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.3
+Version 1.3.1b
 
 =cut
 
-our $VERSION = '1.3';
+our $VERSION = '1.3.1b';
 
 =head1 SYMPOSIS
 
@@ -135,7 +135,7 @@ sub new {
     
     $self->link_attributes(\@default_link_attributes);
     $self->has_base(0);
-    
+    $self->attr_encoded(1);
     return $self;
 }
 
@@ -249,7 +249,6 @@ sub encoding {
     if ($self->{'encoding'}) {
         return $self->{'encoding'};
     }
-    
     my $in = $self->source_handle;
     my $data = do {local $/; <$in>;};
     my $p = HTML::HeadParser->new;
