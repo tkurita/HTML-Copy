@@ -10,7 +10,6 @@ use utf8;
 use Encode;
 use Encode::Guess;
 use Carp;
-#use Data::Dumper;
 
 use HTML::Parser 3.40;
 use HTML::HeadParser;
@@ -23,8 +22,8 @@ __PACKAGE__->mk_accessors(qw(link_attributes
 
 #use Data::Dumper;
 
-our @default_link_attributes = ('src', 'href', 'background', 'csref', 'livesrc');
-# 'livesrc' and 'csref' are uesed in Adobe GoLive
+our @default_link_attributes = ('src', 'href', 'background', 'csref', 'livesrc', 'user');
+# 'livesrc', 'user' and 'csref' are uesed in Adobe GoLive
 
 =head1 NAME
 
@@ -126,7 +125,10 @@ sub new {
         @$self{@keys} = @args{@keys};
     } else {
         my $file = shift @_;
-        if (!ref($file) && (ref(\$file) ne "GLOB")) {
+        my $ref = ref($file);
+        if ($ref =~ /^Path::Class::File/) {
+            $self->source_path($file);
+        } elsif (! $ref && (ref(\$file) ne 'GLOB')) {
             $self->source_path($file);
         } else {
             $self->source_handle($file);
@@ -359,9 +361,19 @@ Tetsuro KURITA <tkurita@mac.com>
 
 sub declaration { $_[0]->output("<!$_[1]>")     }
 sub process     { $_[0]->output($_[2])          }
-sub comment     { $_[0]->output("<!--$_[1]-->") }
 sub end         { $_[0]->output($_[2])          }
 sub text        { $_[0]->output($_[1])          }
+
+sub comment     {
+    my ($self, $comment) = @_;
+    if ($comment =~ /InstanceBegin template="([^"]+)"/) {
+        my $uri = URI->new($1);
+        my $newlink = $self->change_link($uri);
+        $comment = " InstanceBegin template=\"$newlink\" ";
+    }
+    
+    $self->output("<!--$comment-->");
+}
 
 sub start {
     my ($self, $tag, $attr_dict, $attr_names, $tag_text) = @_; 
@@ -479,8 +491,7 @@ sub source_handle {
     
     if (@_) {
         $self->{'source_handle'} = shift @_;
-    }
-    elsif (!$self->{'source_handle'}) {
+    } elsif (!$self->{'source_handle'}) {
         my $path = $self->source_path or croak "source_path is undefined.";
         open my $in, "<", $path or croak "Can't open $path.";
         $self->{'source_handle'} = $in;
