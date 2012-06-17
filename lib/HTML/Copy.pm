@@ -15,7 +15,7 @@ use HTML::Parser 3.40;
 use HTML::HeadParser;
 use URI::file;
 
-use base qw(HTML::Parser Class::Accessor);
+use base qw(HTML::Parser Class::Accessor::Fast);
 
 __PACKAGE__->mk_accessors(qw(link_attributes
                             has_base));
@@ -375,6 +375,15 @@ sub comment     {
     $self->output("<!--$comment-->");
 }
 
+sub process_link {
+    my ($self, $link_path)= @_;
+    return undef if ($link_path =~ /^\$/);
+    return undef if ($link_path =~ /^\[%.*%\]$/);
+    my $uri = URI->new($link_path);
+    return undef if ($uri->scheme);
+    return $self->change_link($uri);
+}
+
 sub start {
     my ($self, $tag, $attr_dict, $attr_names, $tag_text) = @_; 
     
@@ -386,18 +395,23 @@ sub start {
         my $is_changed = 0;
         foreach my $an_attr (@{$self->link_attributes}) {
             if (exists($attr_dict->{$an_attr})){
-                my $link_path = $attr_dict->{$an_attr};
-                next if ($link_path =~ /^\$/);
-                next if ($link_path =~ /^\[%.*%\]$/);
-                my $uri = URI->new($link_path);
-                next if ($uri->scheme);
-                my $newlink = $self->change_link($uri);
+                my $newlink = $self->process_link($attr_dict->{$an_attr});
                 next unless ($newlink);
                 $attr_dict->{$an_attr} = $newlink;
                 $is_changed = 1;
             }
         }
-    
+        
+        if ($tag eq 'param') {
+            if ($attr_dict->{'name'} eq 'src') {
+                my $newlink = $self->process_link($attr_dict->{'value'});
+                if ($newlink) {
+                    $attr_dict->{'value'} = $newlink;
+                    $is_changed = 1;
+                }
+            }
+        }
+        
         if ($is_changed) {
             my $attrs_text = $self->build_attributes($attr_dict, $attr_names);
             $tag_text = "<$tag $attrs_text>";
