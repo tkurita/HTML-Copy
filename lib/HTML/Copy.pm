@@ -110,7 +110,7 @@ sub parse_file($$$) {
 
     $p = HTML::Copy->new($source);
 
-Make an instance of this module with specifing a source of HTML.
+Make an instance of this module with specifying a source of HTML.
 
 The argument $source can be a file path or a file handle. When a file handle is passed, you may need to indicate a file path of the passed file handle by the method L<"source_path">. If calling L<"source_path"> is omitted, it is assumed that the location of the file handle is the current working directory.
 
@@ -289,7 +289,7 @@ sub encoding {
     $p->io_layer;
     $p->io_layer(':utf8');
 
-Get and set PerlIO layer to read the source path and to write the destination path. Usualy it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
+Get and set PerlIO layer to read the source path and to write the destination path. Usually it was automatically determined by $source_path's charset tag. If charset is not specified, Encode::Guess module will be used.
 
 =cut
 
@@ -312,7 +312,7 @@ sub io_layer {
     @suspects = $p->encode_sustects;
     $p->encode_suspects(qw/shiftjis euc-jp/);
 
-Add suspects of text encoding to guess the text encoding of the source HTML. If the source HTML have charset tag, it is not requred to add suspects.
+Add suspects of text encoding to guess the text encoding of the source HTML. If the source HTML have charset tag, it is not required to add suspects.
 
 =cut
 
