@@ -1,5 +1,14 @@
 Revision history for Perl extension HTML::Copy.
 
+1.31 2013-06-27
+    * Remove devendencies on Cwd package.
+    * Broken links are not unescaped.
+    * Ignore template toolikit's variables in links.
+    * Fixed spelling mistakes in the document.
+        * Thanks to gregor herrmann.
+    * Fixed failing tests with Perl 5.18.
+        * Thanks to gregor hermman.
+
 1.3 2008-02-20
     * HTML::Copy can accept file handles instead file pathes.
     * htmlcopy can use standard input and output.

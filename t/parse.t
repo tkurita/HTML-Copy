@@ -6,6 +6,7 @@ use HTML::Copy;
 use utf8;
 use File::Spec::Functions;
 #use Data::Dumper;
+use Encode qw(encode_utf8 decode_utf8);
 
 use Test::More tests => 16;
 
@@ -109,7 +110,7 @@ $copy_html = do {
 ok($copy_html eq $result_html_nocharset, "copy_to no charset shift_jis");
 
 ##== HTML with charset uft-8
-my $src_html_utf8 = <<EOT;
+my $src_html_utf8 = encode_utf8(<<EOT);
 <!DOCTYPE html>
 <html>
 <head>
@@ -126,7 +127,7 @@ my $src_html_utf8 = <<EOT;
 </html>
 EOT
 
-my $result_html_utf8 = <<EOT;
+my $result_html_utf8 = encode_utf8(<<EOT);
 <!DOCTYPE html>
 <html>
 <head>
@@ -174,7 +175,7 @@ $copy_html = do {
     read_and_unlink($destination, $p);
 };
 
-ok($copy_html eq $result_html_utf8, "copy_to giviing a file handle");
+ok($copy_html eq decode_utf8($result_html_utf8), "copy_to giving a file handle");
 
 ##=== copy_to gving file handles for input and output
 $copy_html = do {
@@ -187,7 +188,7 @@ $copy_html = do {
     Encode::decode($p->encoding, $outdata);
 };
 
-ok($copy_html eq $result_html_utf8, "copy_to giviing file handles for input and output");
+ok($copy_html eq decode_utf8($result_html_utf8), "copy_to giving file handles for input and output");
 
 ##=== parse_to giving a file handle
 $copy_html = do {
@@ -196,7 +197,7 @@ $copy_html = do {
     $p->parse_to($destination);
 };
 
-ok($copy_html eq $result_html_utf8, "copy_to giviing file handles for input and output");
+ok($copy_html eq decode_utf8($result_html_utf8), "copy_to giving file handles for input and output");
 
 ##=== copy_to with directory destination
 $copy_html = do {
