@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use File::Spec;
 use File::Basename;
+use File::Path 2.00 qw(make_path);
 use utf8;
 use Encode;
 use Encode::Guess;
@@ -30,11 +31,11 @@ HTML::Copy - copy a HTML file without breaking links.
 
 =head1 VERSION
 
-Version 1.31
+Version 1.32b
 
 =cut
 
-our $VERSION = '1.31';
+our $VERSION = '1.32';
 
 =head1 SYMPOSIS
 
@@ -256,28 +257,24 @@ sub encoding {
     $p->utf8_mode(1);
     $p->parse($data);
     my $content_type = $p->header('content-type');
-    my $encoding = '';
-    if ($content_type) {
-        if ($content_type =~ /charset\s*=(.+)/) {
-            $encoding = $1;
-        }
-    }
-    
-    unless ($encoding) {
-        my $decoder;
-        if (my @suspects = $self->encode_suspects) {
-            $decoder = Encode::Guess->guess($data, @suspects);
-        }
-        else {
-            $decoder = Encode::Guess->guess($data);
-        }
-        
-        ref($decoder) or 
-                    die("Can't guess encoding of ".$self->source_path);
-                    
-        $encoding = $decoder->name;
-    }
-    
+    my $encoding = do {
+        if (($content_type) and ($content_type =~ /charset\s*=(.+)/)) {
+            $1;
+        } else {
+            my $decoder = do {
+                if (my @suspects = $self->encode_suspects) {
+                    Encode::Guess->guess($data, @suspects);
+                } else {
+                    Encode::Guess->guess($data);
+                }};
+            
+            ref($decoder) or 
+              die("Can't guess encoding of ".$self->source_path);
+            
+            $decoder->name;
+        } 
+    };
+
     $self->{'source_html'} = Encode::decode($encoding, $data);
     $self->{'encoding'} = $encoding;
     return $encoding;
@@ -443,7 +440,7 @@ sub set_destination {
             $destination_path = $self->complete_destination_path($destination_path);
         }
         
-        mkpath($dir);
+        make_path($dir);
     }
 
     return $self->destination_path($destination_path);
@@ -466,15 +463,13 @@ sub check_io_layer {
 
 sub build_attributes {
     my ($self, $attr_dict, $attr_names) = @_;
-    my @attrs = ();
-    foreach my $attr_name (@{$attr_names}) {
-        if ($attr_name eq '/') {
-            push @attrs, '/';
+    my @attrs = map {
+        if ('/' eq $_ ) {
+            $_
         } else {
-            my $attr_value = $attr_dict->{$attr_name};
-            push @attrs, "$attr_name=\"$attr_value\"";
-        }
-    }
+            "$_=\"".$attr_dict->{$_}.'"';
+        }} @{$attr_names} ;
+
     return join(' ', @attrs);
 }
 
