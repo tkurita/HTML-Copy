@@ -5,7 +5,6 @@ use strict;
 use warnings;
 use File::Spec;
 use File::Basename;
-use File::Path;
 use utf8;
 use Encode;
 use Encode::Guess;
