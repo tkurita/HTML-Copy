@@ -3,7 +3,7 @@ Revision history for Perl extension HTML::Copy.
 1.31 2013-06-27
     * Remove devendencies on Cwd package.
     * Broken links are not unescaped.
-    * Ignore template toolikit's variables in links.
+    * Ignore template toolkit's variables in links.
     * Fixed spelling mistakes in the document.
         * Thanks to gregor herrmann.
     * Fixed failing tests with Perl 5.18.
