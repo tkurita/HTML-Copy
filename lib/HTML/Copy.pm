@@ -375,6 +375,7 @@ sub process_link {
     my ($self, $link_path)= @_;
     return undef if ($link_path =~ /^\$/);
     return undef if ($link_path =~ /^\[%.*%\]$/);
+    return undef if ($link_path =~ /^#/);
     my $uri = URI->new($link_path);
     return undef if ($uri->scheme);
     return $self->change_link($uri);
